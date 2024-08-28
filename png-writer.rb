@@ -1,9 +1,7 @@
-require 'securerandom'
-require './hex_helpers.rb'
+require 'chunky_png'
+require 'fileutils'
 
 class PngWriter
-  include HexHelpers
-
   def initialize pixel_matrix
     @pixel_matrix = pixel_matrix
   end
@@ -11,20 +9,15 @@ class PngWriter
   public
 
     def write_png file_path
-      header = get_png_file_header @pixel_matrix.length, @pixel_matrix[0].length
+      png = ChunkyPNG::Image.new(@pixel_matrix.length, @pixel_matrix[0].length, ChunkyPNG::Color::TRANSPARENT)
 
-      File.open(file_path, 'w+b') do |file|
-        file.write(header)
+      @pixel_matrix.each.with_index do |row, row_num|
+        row.each.with_index do |pixel, column_num|
+          png[row_num, column_num] = ChunkyPNG::Color.rgba(pixel.r, pixel.g, pixel.b, pixel.a)
+        end
       end
-    end
 
-    def get_png_file_header width, height
-      width_bytes = resolve_int_to_fixed_length_hex width, 8
-      height_bytes = resolve_int_to_fixed_length_hex height, 8
-
-      hex_header = "\x49\x48\x44\x52#{width_bytes}#{height_bytes}\x08\x02\x00\x00\x00"
-      header_crc32 = resolve_crc hex_header
-
-      "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A\x00\x00\x00\x0D#{hex_header}#{header_crc32}"
+      FileUtils.mkdir_p file_path.gsub(/\/.*$/, "") unless file_path.scan(/\//).length == 0
+      png.save(file_path)
     end
 end
